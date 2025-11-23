@@ -3,7 +3,9 @@ package mvi
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -26,7 +28,7 @@ import kotlin.coroutines.coroutineContext
 class CoroutineStore<Intent, Action, Message, State, Label>(
   initialState: State,
   private val bootstrapper: Bootstrapper<Action>?,
-  private val executorFactory: () -> Executor<Intent, Action, State, Message, Label>,
+  private val executor: Executor<Intent, Action, State, Message, Label>,
   private val reducer: Reducer<State, Message>,
   private val dispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
   private val autoInit: Boolean = true
@@ -46,8 +48,6 @@ class CoroutineStore<Intent, Action, Message, State, Label>(
   // Start control
   private val startMutex = Mutex()
   private var started = false
-
-  private val executor: Executor<Intent, Action, State, Message, Label> = executorFactory()
 
   // Context element marking we're already inside the critical section.
   private object InChain : AbstractCoroutineContextElement(Key) {

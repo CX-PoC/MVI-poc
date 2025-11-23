@@ -77,9 +77,10 @@ class CoroutineStoreTest {
     val store = CoroutineStore(
       initialState = CounterState(),
       bootstrapper = null,
-      executorFactory = { TestExecutor() },
+      executor = TestExecutor(),
       reducer = reducer,
-      dispatcher = dispatcher
+      dispatcher = dispatcher,
+      autoInit = true
     )
 
     assertEquals(0, store.state.value.value)
@@ -100,7 +101,7 @@ class CoroutineStoreTest {
     val store = CoroutineStore(
       initialState = CounterState(),
       bootstrapper = TestBootstrapper(),
-      executorFactory = { TestExecutor() },
+      executor = TestExecutor(),
       reducer = reducer,
       dispatcher = dispatcher,
       autoInit = true
@@ -120,10 +121,10 @@ class CoroutineStoreTest {
     val store = CoroutineStore(
       initialState = CounterState(),
       bootstrapper = TestBootstrapper(),
-      executorFactory = { TestExecutor() },
+      executor = TestExecutor(),
       reducer = reducer,
       dispatcher = dispatcher,
-      autoInit = false
+      autoInit = true
     )
 
     store.init()
