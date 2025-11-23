@@ -7,10 +7,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 
 class StoreImpl<Intent, Action, State, Message, Label> (
   initialState: State,
+  autoInit: Boolean = true,
   private val bootstrapper: Bootstrapper<Action>? = null,
   private val executor: Executor<Intent, Action, State, Message, Label>,
   private val reducer: Reducer<State, Message>,
@@ -36,10 +36,8 @@ class StoreImpl<Intent, Action, State, Message, Label> (
       _state.value = reducer.reduce(_state.value, message)
     }
 
-    override fun publish(label: Label) {
-      scope.launch {
-        _label.emit(label)
-      }
+    override fun tryEmit(label: Label): Boolean {
+      return _label.tryEmit(label)
     }
 
     override fun dispatchAction(action: Action) {
@@ -50,6 +48,12 @@ class StoreImpl<Intent, Action, State, Message, Label> (
   }
 
   private val executorScope = ExecutorScopeImpl()
+
+  init {
+    if (autoInit) {
+      init()
+    }
+  }
 
   override fun sendIntent(intent: Intent) {
     with(executor) {
@@ -68,6 +72,7 @@ class StoreImpl<Intent, Action, State, Message, Label> (
   }
 
   override fun dispose() {
+    job.cancel()
   }
 
 }

@@ -58,7 +58,7 @@ interface ExecutorScope<Intent, Action, State, Message, Label> {
   val coroutineScope: CoroutineScope
 
   fun dispatch(message: Message)
-  fun publish(label: Label)
+  fun tryEmit(label: Label): Boolean
   fun dispatchAction(action: Action)
 }
 
