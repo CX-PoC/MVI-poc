@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.concurrent.atomics.AtomicBoolean
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
@@ -37,13 +39,9 @@ class CoroutineStore<Intent, Action, Message, State, Label>(
   override val state: StateFlow<State> = _state.asStateFlow()
 
   private val _labels = MutableSharedFlow<Label>()
-  override val labels = _labels
-
+  override val labels: SharedFlow<Label> = _labels.asSharedFlow()
   // Serialize top-level Intent/Action chains.
   private val intentActionMutex = Mutex()
-
-  // Serialize reducer calls even from detached coroutines.
-  private val reduceMutex = Mutex()
 
   // Start control
   private val startMutex = Mutex()
@@ -65,12 +63,8 @@ class CoroutineStore<Intent, Action, Message, State, Label>(
       get() = scope
 
     override suspend fun dispatch(message: Message) {
-      // Confinement + serialization of reduce
       withContext(scope.coroutineContext) {
-        reduceMutex.withLock {
-          val newState = reducer.reduce(_state.value, message)
-          _state.value = newState
-        }
+        _state.value = reducer.reduce(_state.value, message)
       }
     }
 
@@ -107,19 +101,18 @@ class CoroutineStore<Intent, Action, Message, State, Label>(
   }
 
   override fun init() {
-    // Explicit, idempotent start.
-    scope.launch {
-      startIfNeeded()
-    }
+    startIfNeeded()
   }
 
-  private suspend fun startIfNeeded() {
-    startMutex.withLock {
-      if (started) return
-      started = true
-      bootstrapper?.let { bs ->
-        // Run bootstrapper; it can suspend and dispatch actions.
-        scope.launch {
+  private fun startIfNeeded() {
+    scope.launch {
+      startMutex.withLock {
+        if (started) return@launch
+        started = true
+        bootstrapper?.let { bs ->
+          // Run bootstrapper; it can suspend and dispatch actions.
+          bs.init()
+          executor.init()
           bs.bootstrap { action ->
             // Bootstrapper's actions must go through the same serialization.
             sendActionExternal(action)
@@ -127,6 +120,7 @@ class CoroutineStore<Intent, Action, Message, State, Label>(
         }
       }
     }
+
   }
 
   override suspend fun sendIntent(intent: Intent) {
@@ -143,16 +137,18 @@ class CoroutineStore<Intent, Action, Message, State, Label>(
 
   override fun dispose() {
     job.cancel()
+    bootstrapper?.dispose()
+    executor.dispose()
   }
 
   // ----------------- Internal helpers -----------------
 
   private suspend fun processIntentChain(intent: Intent) {
-    executor.executeIntent(intent, execScope)
+    with(executor) { execScope.executeIntent(intent) }
   }
 
   private suspend fun processActionChain(action: Action) {
-    executor.executeAction(action, execScope)
+    with(executor) { execScope.executeAction(action) }
   }
 
   private suspend fun sendActionExternal(action: Action) {

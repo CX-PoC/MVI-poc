@@ -4,6 +4,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
+
+
 /**
  * Public-facing Store interface.
  *
@@ -38,6 +40,9 @@ interface Store<Intent, State, Label> {
  */
 fun interface Bootstrapper<Action> {
   suspend fun bootstrap(dispatchAction: suspend (Action) -> Unit)
+
+  fun init() {}
+  fun dispose() {}
 }
 
 /**
@@ -57,6 +62,9 @@ fun interface Reducer<State, Message> {
  *  - launch additional work on store's CoroutineScope if desired
  */
 interface ExecutorScope<Intent, Action, State, Message, Label> {
+  /**
+   * Read-only state. Implementation should use `get()` delegate
+   */
   val state: State
   val coroutineScope: CoroutineScope
 
@@ -69,13 +77,9 @@ interface ExecutorScope<Intent, Action, State, Message, Label> {
  * Executor handles both Intents and Actions.
  */
 interface Executor<Intent, Action, State, Message, Label> {
-  suspend fun executeIntent(
-    intent: Intent,
-    scope: ExecutorScope<Intent, Action, State, Message, Label>
-  )
+  suspend fun ExecutorScope<Intent, Action, State, Message, Label>.executeIntent(intent: Intent)
+  suspend fun ExecutorScope<Intent, Action, State, Message, Label>.executeAction(action: Action)
 
-  suspend fun executeAction(
-    action: Action,
-    scope: ExecutorScope<Intent, Action, State, Message, Label>
-  )
+  fun init() {}
+  fun dispose() {}
 }
