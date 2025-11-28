@@ -38,14 +38,14 @@ fun createCounterStore(
   StoreImpl(
     initialState = CounterState(),
     scope = scope,
-    bootstrapper = CounterBootstrapper(),
+    bootstrapper = CounterBootstrapper(scope),
     executor = CounterExecutor(),
     reducer = CounterReducer(),
   )
 
-private class CounterBootstrapper : Bootstrapper<CounterAction> {
+private class CounterBootstrapper(private val scope: CoroutineScope) : Bootstrapper<CounterAction> {
   override fun BootstrapperScope<CounterAction>.bootstrap() {
-    coroutineScope.launch {
+    scope.launch {
       while (true) {
         delay(3000)
         dispatch(CounterAction.Add(5))

@@ -28,7 +28,6 @@ class StoreImpl<Intent, Action, Message, State, Label> (
   override val labels: SharedFlow<Label> = _label
 
   private inner class BootstrapperScopeImpl : BootstrapperScope<Action> {
-    override val coroutineScope: CoroutineScope = scope
     override fun dispatch(action: Action) {
       executorScope.dispatchAction(action)
     }
@@ -36,8 +35,6 @@ class StoreImpl<Intent, Action, Message, State, Label> (
 
   private inner class ExecutorScopeImpl : ExecutorScope<Action, Message, State, Label> {
     override fun state() = _state.value
-
-    override val coroutineScope: CoroutineScope = scope
 
     override fun dispatch(message: Message) {
       _state.update { reducer.reduce(it, message) }

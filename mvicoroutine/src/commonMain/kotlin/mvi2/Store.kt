@@ -40,7 +40,6 @@ fun interface Reducer<State, Message> {
  *  - launch additional work on store's CoroutineScope if desired
  */
 interface BootstrapperScope<Action> {
-  val coroutineScope: CoroutineScope
   fun dispatch(action: Action)
 }
 
@@ -65,7 +64,6 @@ interface ExecutorScope<Action, Message, State, Label> {
    * Read-only state. Implementation should use `get()` delegate
    */
   fun state(): State
-  val coroutineScope: CoroutineScope
 
   fun dispatch(message: Message)
   fun tryEmit(label: Label): Boolean
